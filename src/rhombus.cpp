@@ -1,4 +1,5 @@
 #include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
@@ -11,7 +12,9 @@ int main() {
     return -1;
   }
 
-  cv::Mat frame, gray, blurred, edges;
+
+
+  cv::Mat frame, gray, blurred, thresh, edges;
 
   while (true) {
     cap >> frame;
@@ -21,12 +24,12 @@ int main() {
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
 
     // Blur and edge detection
-    cv::GaussianBlur(gray, blurred, cv::Size(7, 7), 0);
-    cv::Canny(blurred, edges, 10, 40);
-
+    cv::GaussianBlur(gray, blurred, cv::Size(13, 13), 0);
+    cv::adaptiveThreshold(blurred, thresh, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY_INV, 11, 2);
+    cv::Canny(thresh, edges, 40, 100);
     // Find contours
     std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    // cv::findContours(edges, thresh, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     // // Loop through contours
     // for (const auto& cnt : contours) {
@@ -50,13 +53,10 @@ int main() {
     //     }
     //   }
     // }
-    //
 
-    // Show original color frame with boxes
-    cv::imshow("Blurred", blurred);
+    cv::imshow("Threshold", thresh);
+    cv::imshow("Edges", edges);
 
-    // cv::namedWindow("Debug Frame");
-    cv::imshow("Edge detection", edges);
 
     // Press 'q' to quit
     if (cv::waitKey(1) == 'q') break;
