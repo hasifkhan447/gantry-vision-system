@@ -1,10 +1,11 @@
+#include "opencv2/core/hal/interface.h"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
 int main() {
-  std::string url = "http://192.168.0.100:4747/video";
+  std::string url = "http://10.20.1.227:4747/video";
 
   cv::VideoCapture cap(url);
   if (!cap.isOpened()) {
@@ -14,7 +15,7 @@ int main() {
 
 
 
-  cv::Mat frame, gray, blurred, thresh, edges;
+  cv::Mat frame, gray, filtered_out, blurred1, blurred2, thresh, edges;
 
   while (true) {
     cap >> frame;
@@ -24,15 +25,34 @@ int main() {
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
 
     // Blur and edge detection
-    cv::GaussianBlur(gray, blurred, cv::Size(13, 13), 0);
-    cv::adaptiveThreshold(blurred, thresh, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY_INV, 11, 2);
-    cv::Canny(thresh, edges, 40, 100);
+    cv::GaussianBlur(gray, blurred1, cv::Size(11, 11), 0);
+    cv::adaptiveThreshold(blurred1, thresh, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY_INV, 11, 2);
+    cv::GaussianBlur(thresh, blurred2, cv::Size(21, 21), 0);
+    cv::Canny(thresh, edges, 20, 50);
+    // cv::Sobel(thresh, edges, CV_16S, 1, 0);
     // Find contours
     std::vector<std::vector<cv::Point>> contours;
-    // cv::findContours(edges, thresh, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    std::vector<std::vector<cv::Point>> filtered;
+    cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    int minArea = 300;
 
-    // // Loop through contours
-    // for (const auto& cnt : contours) {
+    for (const auto& cnt : contours) {
+      if (cv::contourArea(cnt) > minArea) {
+        std::vector<cv::Point> approximation;
+        cv::approxPolyDP(cnt, approximation, 0.02 * cv::arcLength(cnt, 1), 1);
+
+        if (approximation.size() <= 6 && approximation.size() >= 4 && cv::isContourConvex(approximation)) {
+          filtered.push_back(approximation);
+        }
+      }
+    }
+
+
+    filtered_out = cv::Mat::zeros(frame.size(), CV_8UC3);
+    cv::drawContours(frame, filtered, -1, cv::Scalar(0,255,0),2);
+
+    // Loop through contours
+    // for (const auto& cnt : filtered) {
     //   double perimeter = cv::arcLength(cnt, true);
     //   std::vector<cv::Point> approx;
     //   cv::approxPolyDP(cnt, approx, 0.02 * perimeter, true);
@@ -53,9 +73,10 @@ int main() {
     //     }
     //   }
     // }
+    //
 
-    cv::imshow("Threshold", thresh);
-    cv::imshow("Edges", edges);
+    cv::imshow("Filtered", edges);
+    cv::imshow("Bounding", frame);
 
 
     // Press 'q' to quit
