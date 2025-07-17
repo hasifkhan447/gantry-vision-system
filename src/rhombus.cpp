@@ -15,7 +15,7 @@ int main() {
 
 
 
-  cv::Mat frame, gray, filtered_out, blurred1, blurred2, thresh, edges;
+  cv::Mat frame, gray, filtered_out, blurred1, blurred2, dilated, thresh, edges;
 
   while (true) {
     cap >> frame;
@@ -25,23 +25,24 @@ int main() {
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
 
     // Blur and edge detection
-    cv::GaussianBlur(gray, blurred1, cv::Size(11, 11), 0);
+    cv::GaussianBlur(gray, blurred1, cv::Size(21, 21), 0);
     cv::adaptiveThreshold(blurred1, thresh, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY_INV, 11, 2);
-    cv::GaussianBlur(thresh, blurred2, cv::Size(21, 21), 0);
-    cv::Canny(thresh, edges, 20, 50);
+    cv::GaussianBlur(thresh, blurred2, cv::Size(11, 11), 0);
+    cv::Canny(thresh, edges, 30, 200);
+    cv::dilate(thresh, dilated, cv::Mat(), cv::Point(-1, -1), 3);
     // cv::Sobel(thresh, edges, CV_16S, 1, 0);
     // Find contours
     std::vector<std::vector<cv::Point>> contours;
     std::vector<std::vector<cv::Point>> filtered;
-    cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    int minArea = 300;
+    cv::findContours(dilated, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    int minArea = 1000;
 
     for (const auto& cnt : contours) {
       if (cv::contourArea(cnt) > minArea) {
         std::vector<cv::Point> approximation;
         cv::approxPolyDP(cnt, approximation, 0.02 * cv::arcLength(cnt, 1), 1);
 
-        if (approximation.size() <= 6 && approximation.size() >= 4 && cv::isContourConvex(approximation)) {
+        if (approximation.size() == 4 && cv::isContourConvex(approximation)) {
           filtered.push_back(approximation);
         }
       }
@@ -76,6 +77,7 @@ int main() {
     //
 
     cv::imshow("Filtered", edges);
+    cv::imshow("Dilated", dilated);
     cv::imshow("Bounding", frame);
 
 
